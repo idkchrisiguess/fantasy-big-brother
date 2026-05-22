@@ -1,4 +1,5 @@
 import { createDefaultHouseguests } from "./houseguests";
+import { generateInviteCode } from "./invite";
 import { newId } from "./storage";
 import type {
   DraftPick,
@@ -17,6 +18,7 @@ export function createLeague(input: {
   managerNames: string[];
   rosterSize?: number;
   houseguests?: Houseguest[];
+  passcode?: string;
 }): League {
   const managers: Manager[] = input.managerNames.map((name, index) => ({
     id: newId("mgr"),
@@ -37,6 +39,9 @@ export function createLeague(input: {
     currentWeek: 1,
     draftComplete: false,
     rosterSize: input.rosterSize ?? 3,
+    inviteCode: generateInviteCode(),
+    members: [],
+    passcode: input.passcode?.trim() || undefined,
   };
 }
 
@@ -96,8 +101,9 @@ export function makeDraftPick(
 
   const picks = [...league.picks, pick];
   const draftComplete = picks.length >= totalDraftPicks(league);
+  const draftStartedAt = league.draftStartedAt ?? new Date().toISOString();
 
-  return { ...league, picks, draftComplete };
+  return { ...league, picks, draftComplete, draftStartedAt };
 }
 
 export function undoLastPick(league: League): League {

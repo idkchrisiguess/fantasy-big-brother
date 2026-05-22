@@ -15,6 +15,7 @@ export default function NewLeaguePage() {
   const [seasonLabel, setSeasonLabel] = useState("Season 27");
   const [managersText, setManagersText] = useState("");
   const [rosterSize, setRosterSize] = useState(3);
+  const [passcode, setPasscode] = useState("");
   const [houseguests, setHouseguests] = useState<Houseguest[]>(() =>
     createDefaultHouseguests(),
   );
@@ -57,6 +58,7 @@ export default function NewLeaguePage() {
       managerNames,
       rosterSize,
       houseguests,
+      passcode: passcode.trim() || undefined,
     });
     router.push(`/league/${league.id}`);
   }
@@ -102,6 +104,18 @@ export default function NewLeaguePage() {
             value={managersText}
             onChange={(e) => setManagersText(e.target.value)}
             placeholder={"Chris\nJordan\nSam\nTaylor"}
+            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 text-white placeholder:text-zinc-600"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-zinc-300">
+            Join passcode (optional)
+          </span>
+          <input
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            placeholder="Friends need this to join via invite link"
             className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2 text-white placeholder:text-zinc-600"
           />
         </label>

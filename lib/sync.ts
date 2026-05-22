@@ -1,5 +1,7 @@
+import { ensureInviteCode } from "./invite";
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase/client";
 import type { League, LeagueId } from "./types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export type SyncStatus = "local-only" | "syncing" | "synced" | "error";
 
@@ -39,6 +41,7 @@ interface LeagueRow {
   id: string;
   data: League;
   updated_at: string;
+  invite_code?: string | null;
 }
 
 function leagueFromRow(row: LeagueRow): League {
@@ -65,13 +68,81 @@ export async function pushLeague(league: League): Promise<void> {
   const client = getSupabaseClient();
   if (!client) return;
 
+  const stamped = ensureInviteCode(league);
   const { error } = await client.from("leagues").upsert({
-    id: league.id,
-    data: league,
-    updated_at: getLeagueUpdatedAt(league),
+    id: stamped.id,
+    data: stamped,
+    updated_at: getLeagueUpdatedAt(stamped),
+    invite_code: stamped.inviteCode,
   });
 
   if (error) throw error;
+}
+
+export async function fetchRemoteLeagueById(
+  id: LeagueId,
+): Promise<League | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  const { data, error } = await client
+    .from("leagues")
+    .select("id, data, updated_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return leagueFromRow(data as LeagueRow);
+}
+
+export async function fetchRemoteLeagueByInviteCode(
+  inviteCode: string,
+): Promise<League | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  const normalized = inviteCode.trim().toUpperCase();
+  const { data, error } = await client
+    .from("leagues")
+    .select("id, data, updated_at, invite_code")
+    .eq("invite_code", normalized)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return leagueFromRow(data as LeagueRow);
+}
+
+export function subscribeToLeague(
+  leagueId: LeagueId,
+  onRemoteUpdate: (league: League) => void,
+): () => void {
+  const client = getSupabaseClient();
+  if (!client) return () => {};
+
+  const channel: RealtimeChannel = client
+    .channel(`league:${leagueId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "leagues",
+        filter: `id=eq.${leagueId}`,
+      },
+      (payload) => {
+        const row = payload.new as LeagueRow;
+        if (row?.data) {
+          onRemoteUpdate(leagueFromRow(row));
+        }
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void client.removeChannel(channel);
+  };
 }
 
 export async function deleteRemoteLeague(id: LeagueId): Promise<void> {

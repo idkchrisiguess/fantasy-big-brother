@@ -20,10 +20,19 @@ export interface Houseguest {
   placement?: number;
 }
 
+export interface LeagueMember {
+  id: string;
+  name: string;
+  joinedAt: string;
+  managerId?: ManagerId;
+}
+
 export interface Manager {
   id: ManagerId;
   name: string;
   draftPosition: number;
+  /** Member who claimed this manager slot (live draft / invites). */
+  memberId?: string;
 }
 
 export interface DraftPick {
@@ -54,6 +63,15 @@ export interface League {
   draftComplete: boolean;
   /** Houseguests each manager drafts */
   rosterSize: number;
+  /** Stable code for /league/join/[inviteCode] */
+  inviteCode?: string;
+  members?: LeagueMember[];
+  /** Optional gate for public join links */
+  passcode?: string;
+  /** Member id of league commissioner (undo, settings) */
+  commissionerMemberId?: string;
+  /** Set when first pick is made or draft goes live */
+  draftStartedAt?: string;
 }
 
 export interface ManagerStanding {

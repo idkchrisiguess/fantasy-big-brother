@@ -2,15 +2,20 @@
 
 import { useState } from "react";
 import { DraftBoard } from "@/components/draft-board";
+import { useLeagueLive } from "@/components/hooks/use-league-live";
+import { InvitePanel } from "@/components/invite-panel";
 import { LeagueCharts } from "@/components/league-charts";
+import { ManagerIdentity } from "@/components/manager-identity";
 import { ScoringPanel } from "@/components/scoring-panel";
 import { StandingsTable } from "@/components/standings-table";
 import { buildStandings } from "@/lib/scoring";
+import { isSupabaseConfigured } from "@/lib/sync";
 import type { League } from "@/lib/types";
 
 const TABS = [
   { id: "standings", label: "Standings" },
   { id: "charts", label: "Charts" },
+  { id: "invite", label: "Invite" },
   { id: "draft", label: "Draft" },
   { id: "scoring", label: "Scoring" },
 ] as const;
@@ -27,6 +32,8 @@ export function LeagueTabs({
   const defaultTab: TabId = league.draftComplete ? "standings" : "draft";
   const [tab, setTab] = useState<TabId>(defaultTab);
   const standings = buildStandings(league);
+  const draftLive = !league.draftComplete && isSupabaseConfigured();
+  useLeagueLive(league.id, draftLive);
 
   return (
     <div>
@@ -49,7 +56,22 @@ export function LeagueTabs({
 
       {tab === "standings" ? <StandingsTable standings={standings} /> : null}
       {tab === "charts" ? <LeagueCharts league={league} /> : null}
-      {tab === "draft" ? <DraftBoard league={league} onUpdate={onUpdate} /> : null}
+      {tab === "invite" ? (
+        <InvitePanel league={league} onUpdate={onUpdate} />
+      ) : null}
+      {tab === "draft" ? (
+        <div className="space-y-6">
+          <ManagerIdentity
+            league={league}
+            onClaimCommissioner={(memberId) => {
+              if (!league.commissionerMemberId) {
+                onUpdate({ ...league, commissionerMemberId: memberId });
+              }
+            }}
+          />
+          <DraftBoard league={league} onUpdate={onUpdate} live={draftLive} />
+        </div>
+      ) : null}
       {tab === "scoring" ? (
         <ScoringPanel league={league} onUpdate={onUpdate} />
       ) : null}

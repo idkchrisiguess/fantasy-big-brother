@@ -11,6 +11,7 @@ import {
 import { createLeague } from "@/lib/league";
 import {
   deleteRemoteLeague,
+  getLeagueUpdatedAt,
   isSupabaseConfigured,
   pushLeague,
   syncLeagues,
@@ -37,10 +38,13 @@ interface LeagueStoreValue {
     managerNames: string[];
     rosterSize?: number;
     houseguests?: Houseguest[];
+    passcode?: string;
   }) => League;
   updateLeague: (league: League) => void;
   removeLeague: (id: LeagueId) => void;
   getById: (id: LeagueId) => League | undefined;
+  applyRemoteLeague: (league: League) => void;
+  importLeague: (league: League) => void;
 }
 
 const LeagueStoreContext = createContext<LeagueStoreValue | null>(null);
@@ -220,6 +224,7 @@ export function LeagueStoreProvider({
       managerNames: string[];
       rosterSize?: number;
       houseguests?: Houseguest[];
+      passcode?: string;
     }) => {
       const league = createLeague(input);
       void persistLeague(league);
@@ -233,6 +238,27 @@ export function LeagueStoreProvider({
     [leagues],
   );
 
+  const applyRemoteLeague = useCallback((remote: League) => {
+    const local = loadLeagues();
+    const existing = local.find((l) => l.id === remote.id);
+    if (!existing) {
+      setLeaguesSnapshot(upsertLeague(local, remote));
+      return;
+    }
+    const remoteTime = new Date(getLeagueUpdatedAt(remote)).getTime();
+    const localTime = new Date(getLeagueUpdatedAt(existing)).getTime();
+    if (remoteTime >= localTime) {
+      setLeaguesSnapshot(upsertLeague(local, remote));
+    }
+  }, []);
+
+  const importLeague = useCallback(
+    (league: League) => {
+      void persistLeague(league);
+    },
+    [persistLeague],
+  );
+
   const value = useMemo(
     () => ({
       leagues,
@@ -244,6 +270,8 @@ export function LeagueStoreProvider({
       updateLeague,
       removeLeague,
       getById,
+      applyRemoteLeague,
+      importLeague,
     }),
     [
       leagues,
@@ -255,6 +283,8 @@ export function LeagueStoreProvider({
       updateLeague,
       removeLeague,
       getById,
+      applyRemoteLeague,
+      importLeague,
     ],
   );
 

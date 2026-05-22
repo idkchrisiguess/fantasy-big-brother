@@ -1,13 +1,18 @@
 import { createDefaultHouseguests } from "./houseguests";
+import { ensureInviteCode } from "./invite";
 import type { League, LeagueId } from "./types";
 
 const STORAGE_KEY = "fbb-leagues-v1";
 
 function migrateLeague(league: League): League {
-  if (!Array.isArray(league.houseguests) || league.houseguests.length === 0) {
-    return { ...league, houseguests: createDefaultHouseguests() };
+  let next = league;
+  if (!Array.isArray(next.houseguests) || next.houseguests.length === 0) {
+    next = { ...next, houseguests: createDefaultHouseguests() };
   }
-  return league;
+  if (!next.members) {
+    next = { ...next, members: [] };
+  }
+  return ensureInviteCode(next);
 }
 
 export function loadLeagues(): League[] {

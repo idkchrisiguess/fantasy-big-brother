@@ -9,6 +9,13 @@ create table if not exists public.leagues (
 
 create index if not exists leagues_updated_at_idx on public.leagues (updated_at desc);
 
+-- v2 migration (existing deploys): invite lookup + live draft
+alter table public.leagues add column if not exists invite_code text unique;
+create index if not exists leagues_invite_code_idx on public.leagues (invite_code);
+
+-- Realtime: enable in Dashboard → Database → Replication, or run:
+-- alter publication supabase_realtime add table public.leagues;
+
 alter table public.leagues enable row level security;
 
 -- v1: open read/write for anon (friends/league use). Tighten RLS for production.
